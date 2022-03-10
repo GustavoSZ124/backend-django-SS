@@ -38,7 +38,7 @@ class Documents(models.Model):
 class Chapters(models.Model):
   document = models.ForeignKey(Documents,on_delete=models.CASCADE,null=False)
   chapter = models.CharField(max_length=15,null=False)
-  num = models.PositiveSmallIntegerField(null=False)
+  num = models.CharField(max_length=2,null=False)
 
   @classmethod
   def create(cls,document,chapter,num):
@@ -54,7 +54,7 @@ class Chapters(models.Model):
 class Passages(models.Model):
   chapter = models.ForeignKey(Chapters,on_delete=models.CASCADE,null=False)
   passage = models.CharField(max_length=50,null=False)
-  num = models.PositiveSmallIntegerField(null=False)
+  num = models.CharField(max_length=2,null=False)
 
   @classmethod
   def create(cls,chapter,passage,num):

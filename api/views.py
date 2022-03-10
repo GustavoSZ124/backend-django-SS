@@ -5,6 +5,7 @@ from django.views import View
 from django.core.files.storage import FileSystemStorage
 
 from api.models import Documents, Chapters, Passages, Translations
+from api.utils import processFile
 
 # Create your views here.
 
@@ -13,7 +14,8 @@ class DocumentView(View):
     response = {}
     if(id == -1):
       try:
-        documents = list(Documents.objects.filter(type='Original').values())
+        # documents = list(Documents.objects.filter(type='Original').values())
+        documents = list(Documents.objects.values())
         response['msg'] = "Consulta Exitosa"
         response['documents'] = documents
       except Exception as e:
@@ -40,6 +42,7 @@ class DocumentView(View):
         fname = FileSystemStorage().save(f"file_{newdocument.id}.txt",uploadfile)
         print(f"File: {fname}")
         # Process File
+        processFile(newdocument,fname)
       except Exception as e:
         print(f'Error: {e}')
         response['msg'] = "Error al guardar en la base de datos"
@@ -60,6 +63,8 @@ class DocumentView(View):
         fname = FileSystemStorage().save(f"file_{document.id}.txt",uploadfile)
         print(f"File: {fname}")
         # Process File
+        processFile(document,fname)
+
     return JsonResponse(response)
 
   def delete(self, request: HttpRequest, id):
@@ -86,10 +91,52 @@ class TranslationView(View):
     
   def post(self, request: HttpRequest, id = -1):
     response = {}
-    response['msg'] = "Mensaje"
+    newtranslation: Documents
+    document: Documents
+    try:
+      form = request.POST
+      uploadfile = request.FILES['file']
+    except Exception as e:
+      print(f'Error: {e}')
+      response['msg'] = "Error al leer los datos enviados"
+
+    newtranslation = Documents.create('Translation',form.get('language'),form.get('title'),form.get('author'),uploadfile.name)
+
+    if(id == -1):
+      try:
+        print(f"Traduccion del documento(ID) {form.get('document')}")
+        newtranslation.save()
+        fname = FileSystemStorage().save(f"file_{newtranslation.id}.txt",uploadfile)
+        print(f"File: {fname}")
+        document = Documents.objects.get(id = form.get('document'))
+        # New Translation
+        translation = Translations.create(document,newtranslation)
+        translation.save()
+        # Process File
+      except Exception as e:
+        print(f'Error: {e}')
+        response['msg'] = "Error al guardar en la base de datos"
+    else:
+      # Esto habra que revisarlo
+      document = Documents.objects.get(id = id)
+      changes = document.changes(newtranslation)
+      print(f"changes: {changes}")
+      if(not changes[0]):
+        for i,val in enumerate(changes[2]):
+          setattr(document,changes[1][i],val)
+          print(f'attr list: {changes[1]}')
+          print(f'update document: {document}')
+          document.save(update_fields=changes[1])
+
+      fpath = Path(settings.MEDIA_ROOT / f"file_{id}.txt")
+      if(uploadfile.size != 0 and fpath.exists()):
+        fpath.unlink()
+        fname = FileSystemStorage().save(f"file_{document.id}.txt",uploadfile)
+        print(f"File: {fname}")
+        # Process File
     return JsonResponse(response)
 
   def delete(self, request: HttpRequest):
     response = {}
-    response['msg'] = "Mensaje"
+    # Esto estara pendiente
     return JsonResponse(response)
