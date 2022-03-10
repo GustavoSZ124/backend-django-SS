@@ -1,0 +1,6 @@
+asgiref==3.5.0
+Django==4.0.3
+django-cors-headers==3.11.0
+python-dotenv==0.19.2
+sqlparse==0.4.2
+tzdata==2021.5

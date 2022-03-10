@@ -1,4 +1,6 @@
 #Variables
 .env
+#Base de datos
+db.sqlite3
 #Entorno virtual
 env
