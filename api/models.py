@@ -17,6 +17,20 @@ class Documents(models.Model):
   def __str__(self):
     return self.type+"\n"+self.language+"\n"+self.title+"\n"+self.author+"\n"+self.file
 
+  def changes(self,other):
+    res = [False]
+    if(not isinstance(other, self.__class__)):
+      return res
+    res.append([])
+    res.append([])
+    for attr in vars(self).keys():
+      if(attr != "_state" and attr != "id" and attr != "type"):
+        if(getattr(self,attr) != getattr(other,attr)):
+          res[0] = False
+          res[1].append(attr)
+          res[2].append(getattr(other,attr))
+    return res
+
   class Meta:
     db_table = 'documents'
     ordering = ['-type']
