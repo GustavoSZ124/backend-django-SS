@@ -49,11 +49,11 @@ class Chapters(models.Model):
 
   class Meta:
     db_table = 'chapters'
-    ordering = ['-document','-num']
+    ordering = ['document','num']
 
 class Passages(models.Model):
   chapter = models.ForeignKey(Chapters,on_delete=models.CASCADE,null=False)
-  passage = models.CharField(max_length=50,null=False)
+  passage = models.CharField(max_length=500,null=False)
   num = models.CharField(max_length=2,null=False)
 
   @classmethod
@@ -65,7 +65,7 @@ class Passages(models.Model):
 
   class Meta:
     db_table = 'passages'
-    ordering = ['-chapter','-num']
+    ordering = ['chapter','num']
 
 class Translations(models.Model):
   original = models.ForeignKey(Documents,on_delete=models.CASCADE,null=False,related_name='original')
@@ -84,4 +84,4 @@ class Translations(models.Model):
 
   class Meta:
     db_table = 'translations'
-    ordering = ['-original']
+    ordering = ['original']

@@ -1,5 +1,6 @@
 from pathlib import Path
 from django.conf import settings
+from django.forms import model_to_dict
 from django.http import HttpRequest, JsonResponse
 from django.views import View
 from django.core.files.storage import FileSystemStorage
@@ -14,14 +15,38 @@ class DocumentView(View):
     response = {}
     if(id == -1):
       try:
-        # documents = list(Documents.objects.filter(type='Original').values())
-        documents = list(Documents.objects.values())
+        documents = list(Documents.objects.filter(type='Original').values())
+        # documents = list(Documents.objects.values())
         response['msg'] = "Consulta Exitosa"
         response['documents'] = documents
       except Exception as e:
         print(f'Error: {e}')
         response['msg'] = "Error al consultar los documentos"
-    
+    else:
+      document: Documents = Documents.objects.get(id = id)
+      chapters = Chapters.objects.filter(document = document)
+      response['original'] = {'document': model_to_dict(document), 'chapters': list(chapters.values())}
+
+      for i in range(len(chapters)):
+        passages = list(Passages.objects.filter(chapter = chapters[i]).values())
+        response['original']['chapters'][i]['passages'] = passages
+        # response['translations'][0]['chapters'][i]['passages'] = passages
+
+      translations: Translations = Translations.objects.filter(original = document)
+      response['translations'] = []
+
+      for i in range(len(translations)):
+        document: Documents = translations[i].translated
+        chapters = Chapters.objects.filter(document = document)
+        response['translations'].append({
+        'document': model_to_dict(document),
+        'chapters': list(chapters.values()),
+        })
+
+        for j in range(len(chapters)):
+          passages = list(Passages.objects.filter(chapter = chapters[j]).values())
+          response['translations'][i]['chapters'][j]['passages'] = passages
+
     return JsonResponse(response)
     
   def post(self, request: HttpRequest, id = -1):
@@ -109,10 +134,11 @@ class TranslationView(View):
         fname = FileSystemStorage().save(f"file_{newtranslation.id}.txt",uploadfile)
         print(f"File: {fname}")
         document = Documents.objects.get(id = form.get('document'))
+        # Process File
+        processFile(newtranslation,fname)
         # New Translation
         translation = Translations.create(document,newtranslation)
         translation.save()
-        # Process File
       except Exception as e:
         print(f'Error: {e}')
         response['msg'] = "Error al guardar en la base de datos"
