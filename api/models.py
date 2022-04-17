@@ -17,12 +17,19 @@ class Documents(models.Model):
   def __str__(self):
     return self.type+"\n"+self.language+"\n"+self.title+"\n"+self.author+"\n"+self.file
 
+  # Function to know what differences there are between two documents
+  # Receive as parameters the instance of the document itself and with which it will be compared
+  # Returns an array, in the first position there is a boolean value that indicates if there are changes or not
+  # In the second position is an array with the attributes that are different
+  # In the third position is an array with the new values
   def changes(self,other):
     res = [False]
     if(not isinstance(other, self.__class__)):
       return res
     res.append([])
     res.append([])
+    # The attributes related to the database fields are compared
+    # If they are different, the attribute and the new value are saved in an array
     for attr in vars(self).keys():
       if(attr != "_state" and attr != "id" and attr != "type"):
         if(getattr(self,attr) != getattr(other,attr)):

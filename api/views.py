@@ -11,12 +11,17 @@ from api.utils import processFile
 # Create your views here.
 
 class DocumentView(View):
+  # The GET method receives an option parameter to respond to two urls
+  # documents/: If the route does not have an id, the Documents table is consulted
+  # and send as a response an array with all the documents
+  # documents/<int:id>: if the route has an id, the specific document is consulted
+  # the chapters and passages that make it up, and they are sent as a response
+  # the response is in json format
   def get(self, request: HttpRequest, id = -1):
     response = {}
     if(id == -1):
       try:
-        documents = list(Documents.objects.filter(type='Original').values())
-        # documents = list(Documents.objects.values())
+        documents = list(Documents.objects.values())
         response['msg'] = "Consulta Exitosa"
         response['documents'] = documents
       except Exception as e:
@@ -30,7 +35,6 @@ class DocumentView(View):
       for i in range(len(chapters)):
         passages = list(Passages.objects.filter(chapter = chapters[i]).values())
         response['original']['chapters'][i]['passages'] = passages
-        # response['translations'][0]['chapters'][i]['passages'] = passages
 
       translations: Translations = Translations.objects.filter(original = document)
       response['translations'] = []
@@ -39,8 +43,8 @@ class DocumentView(View):
         document: Documents = translations[i].translated
         chapters = Chapters.objects.filter(document = document)
         response['translations'].append({
-        'document': model_to_dict(document),
-        'chapters': list(chapters.values()),
+          'document': model_to_dict(document),
+          'chapters': list(chapters.values()),
         })
 
         for j in range(len(chapters)):
@@ -49,6 +53,10 @@ class DocumentView(View):
 
     return JsonResponse(response)
     
+  # The POST method receives an optional parameter to respond to two urls
+  # documents/: If the route does not have an id, a new record is created in the database
+  # documents/<int:id>: if the route has id, the modified fields are checked
+  # and they are updated in the database, as well as saving the new document if there is one
   def post(self, request: HttpRequest, id = -1):
     response = {}
     newdocument: Documents
@@ -66,7 +74,6 @@ class DocumentView(View):
         newdocument.save()
         fname = FileSystemStorage().save(f"file_{newdocument.id}.txt",uploadfile)
         print(f"File: {fname}")
-        # Process File
         processFile(newdocument,fname)
       except Exception as e:
         print(f'Error: {e}')
@@ -87,15 +94,16 @@ class DocumentView(View):
         fpath.unlink()
         fname = FileSystemStorage().save(f"file_{document.id}.txt",uploadfile)
         print(f"File: {fname}")
-        # Process File
+        Chapters.objects.filter(document = document).delete()
         processFile(document,fname)
 
+    response['msg'] = "Documento Guardado"
     return JsonResponse(response)
 
+  # The DELETE method receives as a parameter the id of the document to be deleted
+  # is deleted from the database and the respective file is deleted
   def delete(self, request: HttpRequest, id):
     response = {}
-    response['msg'] = "Mensaje"
-
     try:
       Documents.objects.filter(id = id).delete()
       file = Path(settings.MEDIA_ROOT / f"file_{id}.txt")
@@ -106,12 +114,25 @@ class DocumentView(View):
       print(f'Error: {e}')
       response['msg'] = "Error al borrar el documento"
 
+    response['msg'] = "Documento Eliminado"
     return JsonResponse(response)
     
 class TranslationView(View):
   def get(self, request: HttpRequest, id = -1):
     response = {}
-    response['msg'] = "Mensaje"
+    if(id == -1):
+      try:
+        documents = list(Documents.objects.values())
+        response['msg'] = "Consulta Exitosa"
+        response['documents'] = documents
+      except Exception as e:
+        print(f'Error: {e}')
+        response['msg'] = "Error al consultar los documentos"
+    else:
+      translation: Translations = Translations.objects.get(translated = id)
+      response['msg'] = "Consulta Exitosa"
+      response['document'] = model_to_dict(translation.original)
+
     return JsonResponse(response)
     
   def post(self, request: HttpRequest, id = -1):
@@ -134,16 +155,14 @@ class TranslationView(View):
         fname = FileSystemStorage().save(f"file_{newtranslation.id}.txt",uploadfile)
         print(f"File: {fname}")
         document = Documents.objects.get(id = form.get('document'))
-        # Process File
         processFile(newtranslation,fname)
-        # New Translation
         translation = Translations.create(document,newtranslation)
         translation.save()
       except Exception as e:
         print(f'Error: {e}')
         response['msg'] = "Error al guardar en la base de datos"
     else:
-      # Esto habra que revisarlo
+      print(f"Id: {id}")
       document = Documents.objects.get(id = id)
       changes = document.changes(newtranslation)
       print(f"changes: {changes}")
@@ -160,9 +179,26 @@ class TranslationView(View):
         fname = FileSystemStorage().save(f"file_{document.id}.txt",uploadfile)
         print(f"File: {fname}")
         # Process File
+        processFile(document,fname)
+
+      translation: Translations = Translations.objects.get(translated = document.id)
+      print(f'Translation: {translation}')
+      print(f"Document: {form.get('document')}")
+      translation.original = Documents.objects.get(id = form.get('document'))
+      translation.save();
+
     return JsonResponse(response)
 
-  def delete(self, request: HttpRequest):
+  def delete(self, request: HttpRequest, id):
     response = {}
-    # Esto estara pendiente
+    try:
+      Documents.objects.filter(id = id).delete()
+      file = Path(settings.MEDIA_ROOT / f"file_{id}.txt")
+      if(file.exists()):
+        file.unlink()
+      response['msg'] = "Documento Eliminado"
+    except Exception as e:
+      print(f'Error: {e}')
+      response['msg'] = "Error al borrar el documento"
+
     return JsonResponse(response)
