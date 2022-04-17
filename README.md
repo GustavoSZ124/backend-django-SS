@@ -1,6 +1,6 @@
 # backend-django-SS
 
-## prerequisites
+## Prerequisites
 - Python 3 installed (Python 3.9.7 used)
 - File .env
 
